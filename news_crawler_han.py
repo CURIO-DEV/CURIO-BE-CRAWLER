@@ -3,11 +3,10 @@ from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from datetime import datetime  
-
 import time
 import json
 
-#썸네일 url 가져오기
+# 썸네일 URL 가져오기
 def get_thumbnail_from_article(url):
     try:
         res = requests.get(url, headers={"User-Agent": "Mozilla/5.0"})
@@ -49,7 +48,20 @@ def get_category_and_created_at_from_article(url):
         print(f"카테고리/시간 가져오기 실패: {e}")
         return "", ""
 
+# 기사 본문 가져오기
+def get_content_from_article(url):
+    try:
+        response = requests.get(url, timeout=5)
+        response.raise_for_status()  # 요청 실패 시 예외 발생
+        soup = BeautifulSoup(response.text, 'html.parser')
+        paragraphs = soup.select("p.text")  # 본문 텍스트 부분
+        content = "\n".join(p.get_text(strip=True) for p in paragraphs)
+        return content
+    except Exception as e:
+        print(f"[ERROR] Failed to fetch content from {url} - {e}")
+        return ""
 
+# 날짜 포맷팅 함수
 def format_datetime(korean_time_str):
     try:
         dt = datetime.strptime(korean_time_str, "%Y-%m-%d %H:%M")
@@ -58,6 +70,7 @@ def format_datetime(korean_time_str):
         print(f"날짜 포맷 에러: {e}")
         return "2025-04-19T00:00:00"  # fallback
 
+# 크롤링 실행
 def crawl_hani_latest_with_selenium():
     options = Options()
     options.add_argument("--headless")
@@ -88,13 +101,15 @@ def crawl_hani_latest_with_selenium():
 
         image_url = get_thumbnail_from_article(full_url)
         category, created_at = get_category_and_created_at_from_article(full_url)
+        content = get_content_from_article(full_url)  # 본문 내용 크롤링
 
         results.append({
             "title": title,
             "url": full_url,
             "image": image_url,
             "category": category,
-            "createdAt": created_at
+            "createdAt": created_at,
+            "content": content  # 본문 내용 추가
         })
 
         if len(results) >= 10:
@@ -103,31 +118,34 @@ def crawl_hani_latest_with_selenium():
     driver.quit()
     return results
 
-
-
-
+# Spring API로 전송
 def send_to_spring_api(news_list):
     """
     이 함수는 크롤링한 news_list를 Spring API의 /curio/news/crawler 엔드포인트로 전송합니다.
     """
-    spring_url = "http://localhost:8080/curio/news/crawler"  # Spring API URL (필요에 따라 수정)
+    spring_url = "http://localhost:8080/curio/api/articles/crawler"  # Spring API URL (필요에 따라 수정)
     headers = {"Content-Type": "application/json"}
 
     modified_list = []
     for news in news_list:
+        # 날짜 포맷을 처리하고, 생성 시간 정보가 없으면 기본 날짜를 사용
+        created_at = news.get("createdAt", "")
+        if not created_at:
+            created_at = "2025-04-19 12:00"  # 기본 날짜
+        formatted_date = format_datetime(created_at)
+
         modified_news = {
             "title": news["title"],
-            "content": "",                         # 내용 (현재는 비어 있지만, 필요 시 추가할 수 있음)
-            "summaryShort": "",                    # 요약 (필요 시 채워야 함)
-            "summaryMedium": "",                   # 중간 요약 (필요 시 추가)
-            "summaryLong": "",                     # 긴 요약 (필요 시 추가)
-            "category": news.get("category", ""),                    # 카테고리 (예시로 넣었으므로 적절하게 수정 필요)
+            "content": news["content"],  # 본문 내용 추가
+            "summaryShort": "",          # 요약 (필요 시 채워야 함)
+            "summaryMedium": "",         # 중간 요약 (필요 시 추가)
+            "summaryLong": "",           # 긴 요약 (필요 시 추가)
+            "category": news.get("category", ""),  # 카테고리
             "likeCount": 0,  
             "imageUrl": news["image"],
             "sourceUrl": news["url"],
-            "createdAt": format_datetime(news.get("createdAt", "2025-04-19 12:00")),    
-            "updatedAt": format_datetime(news.get("createdAt", "2025-04-19 12:00"))
-            
+            "createdAt": formatted_date,    
+            "updatedAt": formatted_date
         }
         modified_list.append(modified_news)
 
