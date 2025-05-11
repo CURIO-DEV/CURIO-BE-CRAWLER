@@ -80,18 +80,6 @@ def crawl_hani_latest_with_selenium():
 
     driver.get("https://www.hani.co.kr/arti")
     time.sleep(2)
-    
-    # 무한 스크롤 가능하도록 
-    SCROLL_PAUSE_TIME = 2
-    last_height = driver.execute_script("return document.body.scrollHeight")
-
-    while True:
-        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-        time.sleep(SCROLL_PAUSE_TIME)
-        new_height = driver.execute_script("return document.body.scrollHeight")
-        if new_height == last_height:
-            break
-        last_height = new_height
 
     soup = BeautifulSoup(driver.page_source, 'html.parser')
     articles = soup.select("a.BaseArticleCard_link__Q3YFK")
