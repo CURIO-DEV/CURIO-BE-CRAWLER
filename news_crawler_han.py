@@ -167,10 +167,59 @@ def send_to_spring_api(news_list):
         print("Data successfully sent to Spring API")
     else:
         print(f"Failed to send data: {response.status_code}, {response.text}")
+        
+        
+def crawl_hani_by_page(max_pages=5):
+    base_url = "https://www.hani.co.kr/arti?page="
+    results = []
+    seen = set()
+
+    for page in range(1, max_pages + 1):
+        url = base_url + str(page)
+        res = requests.get(url, headers={"User-Agent": "Mozilla/5.0"})
+        soup = BeautifulSoup(res.text, "html.parser")
+
+        articles = soup.select("a.BaseArticleCard_link__Q3YFK")
+        if not articles:
+            break
+
+        for article in articles:
+            href = article.get("href", "")
+            if not href or href in seen:
+                continue
+            seen.add(href)
+
+            title_div = article.select_one("div.BaseArticleCard_title__TVFqt")
+            if not title_div:
+                continue
+            title = title_div.text.strip()
+            full_url = "https://www.hani.co.kr" + href
+
+            image_url = get_thumbnail_from_article(full_url)
+            category, created_at = get_category_and_created_at_from_article(full_url)
+            content = get_content_from_article(full_url)
+
+            results.append({
+                "title": title,
+                "url": full_url,
+                "image": image_url,
+                "category": category,
+                "createdAt": created_at,
+                "content": content
+            })
+
+            if len(results) >= 30:  # 크롤링할 뉴스가 30개가 넘어가면 종료
+                break
+
+        time.sleep(2)  # 서버에 부담을 주지 않기 위해 잠시 대기
+
+    return results
 
 if __name__ == "__main__":
     # 크롤링 실행
-    results = crawl_hani_latest_with_selenium()
+    # results = crawl_hani_latest_with_selenium()
+    results = crawl_hani_by_page(max_pages=5)
+
     
     # 결과 JSON 출력 (디버깅용)
     print(json.dumps(results, ensure_ascii=False))
