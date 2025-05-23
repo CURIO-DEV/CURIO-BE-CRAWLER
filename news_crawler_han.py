@@ -135,7 +135,8 @@ def send_to_spring_api(news_list):
     """
     이 함수는 크롤링한 news_list를 Spring API의 /curio/news/crawler 엔드포인트로 전송합니다.
     """
-    spring_url = "http://localhost:8080/curio/api/articles/crawler"  # Spring API URL (필요에 따라 수정)
+    # spring_url = "http://localhost:8080/curio/api/articles/crawler"  
+    spring_url = "https://port-0-curio-be-mar0zdvm42447885.sel4.cloudtype.app/curio/api/articles/crawler" # 배포 Spring API URL
     headers = {"Content-Type": "application/json"}
 
     modified_list = []
