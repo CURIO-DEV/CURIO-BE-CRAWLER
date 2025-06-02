@@ -26,6 +26,6 @@ async def health_check():
 
 @app.get("/run")
 def run_crawler():
-    news_list = crawl_news()
+    news_list = crawl_hani_by_page()
     send_to_spring_api(news_list)
     return {"message": "크롤링 및 전송 완료!"}
