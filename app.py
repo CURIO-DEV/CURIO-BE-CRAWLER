@@ -37,6 +37,7 @@ async def run_crawler(request: Request):
         send_to_spring_api(news_list)
         return {"status": "success", "count": len(news_list)}
     except Exception as e:
+        print(f"[❌ 에러 발생] {str(e)}")
         return {"status": "error", "message": str(e)}
 
 @app.get("/health")
