@@ -9,12 +9,6 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
-# ✅ 테스트용 POST 엔드포인트
-@app.post("/test-crawl")
-async def test_crawl():
-    print("[🔥 TEST POST 요청 들어옴]")
-    return {"message": "테스트용 POST 엔드포인트 정상 작동!"}
-
 
 # CORS 미들웨어 추가 설정
 app.add_middleware(
@@ -37,7 +31,6 @@ async def run_crawler(request: Request):
         send_to_spring_api(news_list)
         return {"status": "success", "count": len(news_list)}
     except Exception as e:
-        print(f"[❌ 에러 발생] {str(e)}")
         return {"status": "error", "message": str(e)}
 
 @app.get("/health")
