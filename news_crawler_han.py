@@ -170,7 +170,7 @@ def send_to_spring_api(news_list):
         print(f"Failed to send data: {response.status_code}, {response.text}")
         
         
-def crawl_hani_by_page(max_pages=3):
+def crawl_hani_by_page(max_pages=2):
     base_url = "https://www.hani.co.kr/arti?page="
     results = []
     seen = set()
