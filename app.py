@@ -37,12 +37,18 @@ async def run_crawler(request: Request):
 async def health_check():
     return {"status": "ok"}
 
+@app.get("/debug")
+def debug_crawler():
+    news_list = crawl_hani_by_page()
+    return {"count": len(news_list), "titles": [n["title"] for n in news_list]}
+
+@app.get("/test")
+def test():
+    return {"message": "테스트 성공"}
+
 @app.get("/run")
 def run_crawler():
     news_list = crawl_hani_by_page()
     send_to_spring_api(news_list)
     return {"message": "크롤링 및 전송 완료!"}
 
-@app.get("/test")
-def test():
-    return {"message": "테스트 성공"}
