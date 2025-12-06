@@ -19,9 +19,9 @@ app.add_middleware(
     allow_headers=["*"],       # 모든 헤더 허용
 )
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8000))
-    uvicorn.run("app:app", host="0.0.0.0", port=port)
+# if __name__ == "__main__":
+#     port = int(os.environ.get("PORT", 8000))
+#     uvicorn.run("app:app", host="0.0.0.0", port=port)
 
 
 @app.post("/curio/api/articles/crawler")
