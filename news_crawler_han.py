@@ -178,6 +178,12 @@ def crawl_hani_by_page(max_pages=2):
     for page in range(1, max_pages + 1):
         url = base_url + str(page)
         res = requests.get(url, headers={"User-Agent": "Mozilla/5.0"})
+
+        print("===== DEBUG PAGE HTML =====")
+        print(res.text[:2000])   # ← 요기!
+        print("===== END DEBUG =====")
+
+
         soup = BeautifulSoup(res.text, "html.parser")
 
         articles = soup.select("a.BaseArticleCard_link__Q3YFK")
