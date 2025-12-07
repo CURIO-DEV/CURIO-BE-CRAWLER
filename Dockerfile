@@ -27,6 +27,14 @@ RUN apt-get update && apt-get install -y \
     chromium \
     && rm -rf /var/lib/apt/lists/*
 
+# 🔥 Selenium이 chromedriver를 찾을 수 있도록 PATH 등록
+ENV CHROME_BIN=/usr/bin/chromium
+ENV CHROMEDRIVER_PATH=/usr/bin/chromedriver
+ENV PATH="/usr/bin:${PATH}"
+
+# 🔥 서버 환경 무조건 필요한 Chrome 실행 옵션
+ENV CHROME_OPTIONS="--headless --no-sandbox --disable-dev-shm-usage --disable-gpu --remote-debugging-port=9222"
+
 # 작업 디렉토리 설정
 WORKDIR /app
 
@@ -36,11 +44,6 @@ COPY . /app
 # 패키지 설치
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
-
-# 환경 변수 설정
-ENV PYTHONUNBUFFERED=1
-ENV CHROME_BIN=/usr/bin/chromium
-ENV CHROMEDRIVER_PATH=/usr/bin/chromedriver
 
 # FastAPI 실행
 CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
