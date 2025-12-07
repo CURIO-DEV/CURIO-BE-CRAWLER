@@ -9,6 +9,25 @@ import json
 
 
 # -----------------------------------------------------
+# 0) Headless Chrome Driver 생성
+# -----------------------------------------------------
+def get_driver():
+    chrome_options = Options()
+    chrome_options.add_argument("--headless=new")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--disable-software-rasterizer")
+    chrome_options.add_argument("--window-size=1920,1080")
+
+    driver = webdriver.Chrome(
+        executable_path="/usr/bin/chromedriver",
+        options=chrome_options
+    )
+    return driver
+
+
+# -----------------------------------------------------
 # 1) 썸네일 가져오기
 # -----------------------------------------------------
 def get_thumbnail_from_article(url):
@@ -24,7 +43,7 @@ def get_thumbnail_from_article(url):
 
 
 # -----------------------------------------------------
-# 2) 카테고리 + 날짜 가져오기 (CSS Module 제거)
+# 2) 카테고리 + 날짜 가져오기
 # -----------------------------------------------------
 def get_category_and_created_at_from_article(url):
     try:
@@ -52,7 +71,7 @@ def get_category_and_created_at_from_article(url):
 
 
 # -----------------------------------------------------
-# 3) 본문 가져오기 (정확한 selector로 수정)
+# 3) 본문 가져오기
 # -----------------------------------------------------
 def get_content_from_article(url):
     try:
@@ -84,24 +103,30 @@ def format_datetime(korean_time_str):
 
 
 # -----------------------------------------------------
-# 5) 페이지 기반 크롤링
+# 5) Selenium 기반 페이지 크롤링
 # -----------------------------------------------------
 def crawl_hani_by_page(max_pages=2):
     base_url = "https://www.hani.co.kr/arti?page="
     results = []
     seen = set()
 
+    driver = get_driver()
+
     for page in range(1, max_pages + 1):
         url = base_url + str(page)
-        res = requests.get(url, headers={"User-Agent": "Mozilla/5.0"})
+
+        driver.get(url)
+        time.sleep(2)
+
+        html = driver.page_source
 
         print("===== DEBUG PAGE HTML =====")
-        print(res.text[:2000])   # ← 요기!
+        print(html[:2000])
         print("===== END DEBUG =====")
-    
-        soup = BeautifulSoup(res.text, "html.parser")
 
-        # CSS Module 제거 → href 기반 추출
+        soup = BeautifulSoup(html, "html.parser")
+
+        # React로 렌더링된 기사 링크 → href 기반으로 탐색
         articles = soup.select("a[href*='/arti/']")
 
         for article in articles:
@@ -112,7 +137,7 @@ def crawl_hani_by_page(max_pages=2):
 
             full_url = "https://www.hani.co.kr" + href
 
-            # 제목 가져오기 (CSS Module 제거)
+            # 제목
             title_tag = article.select_one("h4, strong, span")
             title = title_tag.get_text(strip=True) if title_tag else ""
             if not title:
@@ -133,10 +158,12 @@ def crawl_hani_by_page(max_pages=2):
             })
 
             if len(results) >= 30:
+                driver.quit()
                 return results
 
         time.sleep(1)
 
+    driver.quit()
     return results
 
 
@@ -170,9 +197,9 @@ def send_to_spring_api(news_list):
 
 
 # -----------------------------------------------------
-# 실행
+# 실행 (로컬용)
 # -----------------------------------------------------
 if __name__ == "__main__":
-    results = crawl_hani_by_page(max_pages=5)
+    results = crawl_hani_by_page(max_pages=3)
     print(json.dumps(results, ensure_ascii=False))
     send_to_spring_api(results)
