@@ -5,6 +5,33 @@ from dateutil.parser import parse
 import time
 import json
 
+CATEGORY_URLS = {
+    "스포츠": "https://www.hani.co.kr/arti/sports/sports_general",
+    "국제": "https://www.hani.co.kr/arti/international/international_general",
+    "정치": "https://www.hani.co.kr/arti/politics/politics_general",
+    "외교": "https://www.hani.co.kr/arti/politics/diplomacy",
+    "사회": "https://www.hani.co.kr/arti/society/society_general",
+
+    "연예": "https://www.hani.co.kr/arti/culture/entertainment",
+    "환경": "https://www.hani.co.kr/arti/society/environment",
+    "경제": "https://www.hani.co.kr/arti/economy/economy_general",
+    "부동산": "https://www.hani.co.kr/arti/economy/property",
+    "자동차": "https://www.hani.co.kr/arti/economy/car",
+
+    # "뷰티": "https://www.hani.co.kr/arti/culture/style",ㅇ
+    "여행": "https://www.hani.co.kr/arti/culture/travel",
+    "과학": "https://www.hani.co.kr/arti/science/science_general",
+    # "패션": "https://www.hani.co.kr/arti/culture/style",ㅇ
+    "건강": "https://www.hani.co.kr/arti/hanihealth/healthlife",
+
+    "법률": "https://www.hani.co.kr/arti/politics/administration",
+    "교육": "https://www.hani.co.kr/arti/society/schooling",
+    "종교": "https://www.hani.co.kr/arti/society/religious",
+    "IT": "https://www.hani.co.kr/arti/economy/it",
+    "생활": "https://www.hani.co.kr/arti/society/life"
+}
+
+
 
 # -----------------------------------------------------
 # 1) 썸네일 URL 가져오기 (기존 동일)
@@ -214,6 +241,58 @@ def send_to_spring_api(news_list):
     response = requests.post(spring_url, json=modified_list, headers=headers)
 
     print("SPRING RESPONSE:", response.status_code, response.text)
+
+# 카테고리 1개 크롤링
+
+def crawl_category_once(category_name, limit=5):
+    url = CATEGORY_URLS.get(category_name)
+    if not url:
+        print(f"[WARN] Unknown category: {category_name}")
+        return []
+
+    res = requests.get(url, headers={"User-Agent": "Mozilla/5.0"})
+    soup = BeautifulSoup(res.text, "html.parser")
+
+    articles = soup.select("a.BaseArticleCard_link__Q3YFK")
+    results = []
+
+    for tag in articles[:limit]:
+        href = tag.get("href")
+        if not href:
+            continue
+        
+        title_tag = tag.select_one("div.BaseArticleCard_title__TVFqt")
+        if not title_tag:
+            continue
+
+        full_url = "https://www.hani.co.kr" + href
+        title = title_tag.text.strip()
+
+        image = get_thumbnail_from_article(full_url)
+        _, created_at = get_category_and_created_at_from_article(full_url)
+        content = get_content_from_article(full_url)
+
+        results.append({
+            "title": title,
+            "url": full_url,
+            "image": image,
+            "category": category_name,  # 우리가 정의한 20개 기준으로 강제 저장
+            "createdAt": created_at,
+            "content": content
+        })
+
+    return results
+
+# 20개 카테고리 크롤링
+
+def crawl_all_categories(limit=5):
+    all_results = []
+    for category in CATEGORY_URLS.keys():
+        print(f"[INFO] Crawling category: {category}")
+        items = crawl_category_once(category, limit)
+        all_results.extend(items)
+        time.sleep(1)
+    return all_results
 
 
 # -----------------------------------------------------

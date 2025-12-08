@@ -4,6 +4,9 @@ from news_crawler_han import crawl_hani_by_page, send_to_spring_api
 import os
 import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
+from news_crawler_han import crawl_all_categories
+
+
 
 app = FastAPI()
 
@@ -45,3 +48,12 @@ async def run_crawler_get(background_tasks: BackgroundTasks):
 @app.get("/health")
 async def health_check():
     return {"status": "ok"}
+
+def run_categories_task():
+    data = crawl_all_categories(limit=5)
+    send_to_spring_api(data)
+
+@app.post("/curio/api/articles/crawler/categories")
+async def run_categories(background_tasks: BackgroundTasks):
+    background_tasks.add_task(run_categories_task)
+    return {"status": "categories started"}
