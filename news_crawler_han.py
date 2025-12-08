@@ -222,7 +222,7 @@ def send_to_spring_api(news_list):
 if __name__ == "__main__":
     # 원래는 Selenium 기반이었지만 동작 동일
     # results = crawl_hani_latest_with_selenium()
-    results = crawl_hani_by_page(max_pages=5)
+    results = crawl_hani_by_page(max_pages=15)
 
     print(json.dumps(results, ensure_ascii=False))
     send_to_spring_api(results)
