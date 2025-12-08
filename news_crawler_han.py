@@ -133,7 +133,7 @@ def crawl_hani_latest_with_selenium():
 # -----------------------------------------------------
 # 6) 페이지 기반 크롤링 (기존 동일, 내부 안정화)
 # -----------------------------------------------------
-def crawl_hani_by_page(max_pages=2):
+def crawl_hani_by_page(max_pages=15):
     base_url = "https://www.hani.co.kr/arti?page="
     results = []
     seen = set()
