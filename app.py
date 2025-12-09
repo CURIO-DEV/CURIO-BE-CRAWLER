@@ -26,6 +26,13 @@ def run_crawler_task():
     news_list = crawl_hani_by_page()
     send_to_spring_api(news_list)
 
+def run_categories_task():
+    data = crawl_all_categories(limit=5)
+    print("CATEGORY TOTAL:", len(data))
+    for item in data:
+        print(item["category"], item["title"])
+    send_to_spring_api(data)
+
 
 # -----------------------------
 # POST API (Swagger 호출용)
@@ -49,9 +56,6 @@ async def run_crawler_get(background_tasks: BackgroundTasks):
 async def health_check():
     return {"status": "ok"}
 
-def run_categories_task():
-    data = crawl_all_categories(limit=5)
-    send_to_spring_api(data)
 
 @app.post("/curio/api/articles/crawler/categories")
 async def run_categories(background_tasks: BackgroundTasks):

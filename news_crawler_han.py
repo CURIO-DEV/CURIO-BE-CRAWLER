@@ -160,7 +160,7 @@ def crawl_hani_latest_with_selenium():
 # -----------------------------------------------------
 # 6) 페이지 기반 크롤링 (기존 동일, 내부 안정화)
 # -----------------------------------------------------
-def crawl_hani_by_page(max_pages=15):
+def crawl_hani_by_page(max_pages=5):
     base_url = "https://www.hani.co.kr/arti?page="
     results = []
     seen = set()
@@ -301,7 +301,7 @@ def crawl_all_categories(limit=5):
 if __name__ == "__main__":
     # 원래는 Selenium 기반이었지만 동작 동일
     # results = crawl_hani_latest_with_selenium()
-    results = crawl_hani_by_page(max_pages=15)
+    results = crawl_hani_by_page(max_pages=5)
 
     print(json.dumps(results, ensure_ascii=False))
     send_to_spring_api(results)
