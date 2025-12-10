@@ -1,10 +1,12 @@
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
-from dateutil.parser import parse
 import time
 import json
 
+# --------------------------------------------
+# 카테고리 URL 매핑
+# --------------------------------------------
 CATEGORY_URLS = {
     "스포츠": "https://www.hani.co.kr/arti/sports/sports_general",
     "국제": "https://www.hani.co.kr/arti/international/international_general",
@@ -18,10 +20,8 @@ CATEGORY_URLS = {
     "부동산": "https://www.hani.co.kr/arti/economy/property",
     "자동차": "https://www.hani.co.kr/arti/economy/car",
 
-    # "뷰티": "https://www.hani.co.kr/arti/culture/style",ㅇ
     "여행": "https://www.hani.co.kr/arti/culture/travel",
     "과학": "https://www.hani.co.kr/arti/science/science_general",
-    # "패션": "https://www.hani.co.kr/arti/culture/style",ㅇ
     "건강": "https://www.hani.co.kr/arti/hanihealth/healthlife",
 
     "법률": "https://www.hani.co.kr/arti/politics/administration",
@@ -31,135 +31,78 @@ CATEGORY_URLS = {
     "생활": "https://www.hani.co.kr/arti/society/life"
 }
 
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    "Referer": "https://www.google.com",
+    "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
+}
 
-
-# -----------------------------------------------------
-# 1) 썸네일 URL 가져오기 (기존 동일)
-# -----------------------------------------------------
+# --------------------------------------------
+# 1) 썸네일 URL 가져오기
+# --------------------------------------------
 def get_thumbnail_from_article(url):
     try:
-        res = requests.get(url, headers={"User-Agent": "Mozilla/5.0"})
+        res = requests.get(url, headers=HEADERS, timeout=8)
         soup = BeautifulSoup(res.text, 'html.parser')
         og_image = soup.select_one("meta[property='og:image']")
         if og_image:
             return og_image.get("content")
-    except Exception as e:
-        print(f"썸네일 가져오기 실패: {e}")
+    except:
+        pass
     return None
 
 
-# -----------------------------------------------------
-# 2) 카테고리 + 등록일 가져오기 (기존 동일)
-# -----------------------------------------------------
+# --------------------------------------------
+# 2) 카테고리 + 등록시간 가져오기
+# --------------------------------------------
 def get_category_and_created_at_from_article(url):
     try:
-        res = requests.get(url, headers={"User-Agent": "Mozilla/5.0"})
+        res = requests.get(url, headers=HEADERS, timeout=8)
         soup = BeautifulSoup(res.text, 'html.parser')
 
-        # 기존 로직 유지
         breadcrumb = soup.select_one("div.ArticleDetailView_breadcrumb___UwRC")
-        category = ""
-        if breadcrumb:
-            first_category = breadcrumb.find("a")
-            if first_category:
-                category = first_category.get_text(strip=True)
+        category = breadcrumb.find("a").get_text(strip=True) if breadcrumb else ""
 
         created_at = ""
-        date_list = soup.select("ul.ArticleDetailView_dateList__tniXJ li")
-        for li in date_list:
-            if "등록" in li.get_text():
-                time_span = li.find("span")
-                if time_span:
-                    created_at = time_span.get_text(strip=True)
-                    break
+        for li in soup.select("ul.ArticleDetailView_dateList__tniXJ li"):
+            if "등록" in li.text:
+                span = li.find("span")
+                if span:
+                    created_at = span.text.strip()
+                break
 
         return category, created_at
-
-    except Exception as e:
-        print(f"카테고리/시간 가져오기 실패: {e}")
+    except:
         return "", ""
 
 
-# -----------------------------------------------------
-# 3) 기사 본문 가져오기 (기존 동일)
-# -----------------------------------------------------
+# --------------------------------------------
+# 3) 본문 가져오기
+# --------------------------------------------
 def get_content_from_article(url):
     try:
-        response = requests.get(url, timeout=5)
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, 'html.parser')
-        paragraphs = soup.select("p.text")
-        content = "\n".join(p.get_text(strip=True) for p in paragraphs)
+        res = requests.get(url, headers=HEADERS, timeout=8)
+        soup = BeautifulSoup(res.text, 'html.parser')
+        content = "\n".join(p.get_text(strip=True) for p in soup.select("p.text"))
         return content
-    except Exception as e:
-        print(f"[ERROR] Failed to fetch content from {url} - {e}")
+    except:
         return ""
 
 
-# -----------------------------------------------------
-# 4) 날짜 포맷팅 (기존 유지)
-# -----------------------------------------------------
+# --------------------------------------------
+# 날짜 포맷팅
+# --------------------------------------------
 def format_datetime(korean_time_str):
     try:
         dt = datetime.strptime(korean_time_str, "%Y-%m-%d %H:%M")
         return dt.isoformat()
-    except Exception:
+    except:
         return "2025-04-19T00:00:00"
 
 
-# -----------------------------------------------------
-# 5) 원래 Selenium으로 했던 최신기사 크롤링 → requests 기반으로 재구현
-# 구조는 그대로 유지, 내부만 대체
-# -----------------------------------------------------
-def crawl_hani_latest_with_selenium():
-    """
-    기존 함수 이름을 유지하지만 내부는 Selenium 없이 동작
-    """
-
-    url = "https://www.hani.co.kr/arti"
-    res = requests.get(url, headers={"User-Agent": "Mozilla/5.0"})
-    soup = BeautifulSoup(res.text, "html.parser")
-
-    articles = soup.select("a.BaseArticleCard_link__Q3YFK")
-
-    results = []
-    seen = set()
-
-    for article in articles:
-        href = article.get("href", "")
-        if not href or href in seen:
-            continue
-        seen.add(href)
-
-        title_div = article.select_one("div.BaseArticleCard_title__TVFqt")
-        if not title_div:
-            continue
-
-        title = title_div.text.strip()
-        full_url = "https://www.hani.co.kr" + href
-
-        image = get_thumbnail_from_article(full_url)
-        category, created_at = get_category_and_created_at_from_article(full_url)
-        content = get_content_from_article(full_url)
-
-        results.append({
-            "title": title,
-            "url": full_url,
-            "image": image,
-            "category": category,
-            "createdAt": created_at,
-            "content": content
-        })
-
-        if len(results) >= 30:
-            break
-
-    return results
-
-
-# -----------------------------------------------------
-# 6) 페이지 기반 크롤링 (기존 동일, 내부 안정화)
-# -----------------------------------------------------
+# --------------------------------------------
+# 최신 기사 크롤링 (arti?page=1~N)
+# --------------------------------------------
 def crawl_hani_by_page(max_pages=5):
     base_url = "https://www.hani.co.kr/arti?page="
     results = []
@@ -167,26 +110,25 @@ def crawl_hani_by_page(max_pages=5):
 
     for page in range(1, max_pages + 1):
         url = base_url + str(page)
-        res = requests.get(url, headers={"User-Agent": "Mozilla/5.0"})
+        res = requests.get(url, headers=HEADERS)
         soup = BeautifulSoup(res.text, "html.parser")
 
         articles = soup.select("a.BaseArticleCard_link__Q3YFK")
         if not articles:
-            break
+            continue
 
         for article in articles:
-            href = article.get("href", "")
+            href = article.get("href")
             if not href or href in seen:
                 continue
-            seen.add(href)
 
+            seen.add(href)
             title_div = article.select_one("div.BaseArticleCard_title__TVFqt")
             if not title_div:
                 continue
 
-            title = title_div.text.strip()
             full_url = "https://www.hani.co.kr" + href
-
+            title = title_div.text.strip()
             image = get_thumbnail_from_article(full_url)
             category, created_at = get_category_and_created_at_from_article(full_url)
             content = get_content_from_article(full_url)
@@ -201,56 +143,22 @@ def crawl_hani_by_page(max_pages=5):
             })
 
             if len(results) >= 30:
-                break
+                return results
 
         time.sleep(1)
 
     return results
 
 
-# -----------------------------------------------------
-# 7) Spring API 전송 (기존과 완전히 동일)
-# -----------------------------------------------------
-def send_to_spring_api(news_list):
-    spring_url = "https://api.curi-o.site/curio/api/articles/crawler"
-    headers = {"Content-Type": "application/json"}
-
-    modified_list = []
-    for news in news_list:
-        created_at = news.get("createdAt", "")
-        if not created_at:
-            created_at = "2025-04-19 12:00"
-
-        formatted_date = format_datetime(created_at)
-
-        modified_news = {
-            "title": news["title"],
-            "content": news["content"],
-            "summaryShort": "",
-            "summaryMedium": "",
-            "summaryLong": "",
-            "category": news.get("category", ""),
-            "likeCount": 0,
-            "imageUrl": news["image"],
-            "sourceUrl": news["url"],
-            "createdAt": formatted_date,
-            "updatedAt": formatted_date
-        }
-        modified_list.append(modified_news)
-
-    response = requests.post(spring_url, json=modified_list, headers=headers)
-
-    print("SPRING RESPONSE:", response.status_code, response.text)
-
+# --------------------------------------------
 # 카테고리 1개 크롤링
-
+# --------------------------------------------
 def crawl_category_once(category_name, limit=5):
     url = CATEGORY_URLS.get(category_name)
     if not url:
-        print(f"[WARN] Unknown category: {category_name}")
         return []
 
-    res = requests.get(url, headers={"User-Agent": "Mozilla/5.0"})
+    res = requests.get(url, headers=HEADERS)
     soup = BeautifulSoup(res.text, "html.parser")
 
     articles = soup.select("a.BaseArticleCard_link__Q3YFK")
@@ -260,14 +168,13 @@ def crawl_category_once(category_name, limit=5):
         href = tag.get("href")
         if not href:
             continue
-        
+
         title_tag = tag.select_one("div.BaseArticleCard_title__TVFqt")
         if not title_tag:
             continue
 
         full_url = "https://www.hani.co.kr" + href
         title = title_tag.text.strip()
-
         image = get_thumbnail_from_article(full_url)
         _, created_at = get_category_and_created_at_from_article(full_url)
         content = get_content_from_article(full_url)
@@ -276,32 +183,54 @@ def crawl_category_once(category_name, limit=5):
             "title": title,
             "url": full_url,
             "image": image,
-            "category": category_name,  # 우리가 정의한 20개 기준으로 강제 저장
+            "category": category_name,  # 매칭된 카테고리 이름
             "createdAt": created_at,
             "content": content
         })
 
     return results
 
-# 20개 카테고리 크롤링
 
+# --------------------------------------------
+# 20개 카테고리 전체 크롤링
+# --------------------------------------------
 def crawl_all_categories(limit=5):
     all_results = []
     for category in CATEGORY_URLS.keys():
         print(f"[INFO] Crawling category: {category}")
-        items = crawl_category_once(category, limit)
-        all_results.extend(items)
+        data = crawl_category_once(category, limit)
+        all_results.extend(data)
         time.sleep(1)
     return all_results
 
 
-# -----------------------------------------------------
-# 실행
-# -----------------------------------------------------
-if __name__ == "__main__":
-    # 원래는 Selenium 기반이었지만 동작 동일
-    # results = crawl_hani_latest_with_selenium()
-    results = crawl_hani_by_page(max_pages=5)
+# --------------------------------------------
+# 스프링 서버로 전송
+# --------------------------------------------
+def send_to_spring_api(news_list):
+    spring_url = "https://api.curi-o.site/curio/api/articles/crawler"
+    headers = {"Content-Type": "application/json"}
 
-    print(json.dumps(results, ensure_ascii=False))
-    send_to_spring_api(results)
+    modified = []
+    for news in news_list:
+        created_at = news.get("createdAt") or "2025-04-19 12:00"
+        formatted = format_datetime(created_at)
+
+        modified.append({
+            "title": news["title"],
+            "content": news["content"],
+            "summaryShort": "",
+            "summaryMedium": "",
+            "summaryLong": "",
+            "category": news["category"],
+            "likeCount": 0,
+            "imageUrl": news["image"],
+            "sourceUrl": news["url"],
+            "createdAt": formatted,
+            "updatedAt": formatted
+        })
+
+    response = requests.post(spring_url, json=modified, headers=headers)
+    print("SPRING RESPONSE:", response.status_code)
+
+
